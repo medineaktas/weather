@@ -1,6 +1,16 @@
+
 version: '3.9'
 
 services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: always
+    container_name: portainer
+    ports:
+      - "8004:8004"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
   app:
     image: 'open-weather:latest'
     build:
@@ -15,16 +25,17 @@ services:
     environment:
       - "WEATHER_STACK_API_KEY=${WEATHER_STACK_API_KEY}"
       - "SPRING_PROFILES_ACTIVE=test"
+
   prometheus:
     image: prom/prometheus:v2.35.0
     container_name: prometheus
     restart: unless-stopped
+    volumes:
+      - ./data/prometheus/config:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
       - "9090:9090"
-    volumes:
-      - ./data/prometheus/config:/etc/prometheus/
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yaml'
     networks:
       - open-weather-network
   grafana:

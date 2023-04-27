@@ -8,6 +8,6 @@ COPY src src
 RUN ./mvnw package
 
 FROM openjdk:17-jdk-slim
-WORKDIR weather
-COPY --from=build target/*.jar weather.jar
-ENTRYPOINT ["java", "-jar", "weather.jar"]
+WORKDIR open-weather
+COPY --from=build target/*.jar open-weather.jar
+ENTRYPOINT ["java", "-jar", "open-weather.jar"]
