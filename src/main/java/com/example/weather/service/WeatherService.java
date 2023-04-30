@@ -7,9 +7,15 @@ import com.example.weather.model.WeatherEntity;
 import com.example.weather.repository.WeatherRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.client.RestTemplate;
@@ -23,6 +29,7 @@ import java.util.Optional;
 import static com.example.weather.constants.Constants.*;
 
 @Service
+@CacheConfig(cacheNames = {"weathers"})
 public class WeatherService {
     private static final Logger logger = LoggerFactory.getLogger(WeatherService.class);
 
@@ -40,6 +47,7 @@ public class WeatherService {
         this.clock = clock;
     }
 
+    @Cacheable(key = "#city")
     public WeatherDto getWeather(String city) {
 
         Optional<WeatherEntity> weatherEntityOptional = weatherRepository.findFirstByRequestedCityNameOrderByUpdatedTimeDesc(city);
@@ -53,6 +61,7 @@ public class WeatherService {
             return WeatherDto.convert(weather);
         }).orElseGet(() -> createCityWeather(city));
     }
+    @CachePut(key = "#city")
     public WeatherDto createCityWeather(String city) {
         logger.info("Requesting weather stack api for city: " + city);
         String url = getWeatherStackUrl(city);
@@ -70,6 +79,13 @@ public class WeatherService {
             }
         }
     }
+    @CacheEvict(allEntries = true)
+    @PostConstruct
+    @Scheduled(fixedRateString = "${weather-stack.cache-ttl}")
+    public void clearCache(){
+        logger.info("Caches are cleared");
+    }
+
     private WeatherEntity saveWeatherEntity(String city, WeatherResponse response) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         WeatherEntity weatherEntity = new WeatherEntity(city,
